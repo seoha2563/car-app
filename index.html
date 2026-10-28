@@ -19,6 +19,20 @@
     <p id="car-title"></p>
   </header>
 
+  <!-- ===== 로그인 화면 (로그인 전에만 보임) ===== -->
+  <main id="auth" hidden>
+    <form id="auth-form">
+      <h2 style="margin-top:0">로그인</h2>
+      <label>이메일 <input type="email" name="email" autocomplete="email" required></label>
+      <label>비밀번호 (6자 이상) <input type="password" name="password" minlength="6" autocomplete="current-password" required></label>
+      <button type="submit">로그인</button>
+      <button type="button" id="signup-btn" class="secondary">회원가입</button>
+      <p id="auth-msg" class="hint"></p>
+    </form>
+  </main>
+
+  <!-- 로그인 후에만 보이는 앱 본체 -->
+  <div id="app" hidden>
   <!-- 탭 메뉴: data-tab 값이 아래 section의 id와 연결됩니다 -->
   <nav id="tabs">
     <button data-tab="summary" class="active">요약</button>
@@ -45,7 +59,7 @@
       <form id="fuel-form">
         <label>날짜 <input type="date" name="date" required></label>
         <label>주행거리(km) <input type="number" name="odo" min="0" required></label>
-        <label>주유량(L) <input type="number" name="liters" step="0.01" min="0" required></label>
+        <label>주유량(L) <input type="number" name="liters" step="0.01" min="0.01" required></label>
         <label>총 금액(원) <input type="number" name="cost" min="0" required></label>
         <button type="submit">주유 기록 추가</button>
       </form>
@@ -86,15 +100,29 @@
         <button type="submit">저장</button>
       </form>
 
+      <h2>계정</h2>
+      <p class="hint" id="account-email"></p>
+      <button id="logout-btn" type="button" class="secondary">로그아웃</button>
+
+      <!-- 이 기기에 예전(서버 도입 전) 기록이 남아 있을 때만 보임 -->
+      <div id="migrate-box" hidden>
+        <h2>이 기기의 기존 기록 옮기기</h2>
+        <p class="hint">서버 저장 이전에 이 브라우저에 쌓아둔 기록이 있어요. 내 계정으로 옮길 수 있어요.</p>
+        <button id="migrate-btn" type="button">서버로 옮기기</button>
+      </div>
+
       <h2>백업</h2>
-      <p class="hint">브라우저 데이터를 지우면 기록도 사라져요. 가끔 내보내기로 백업하세요.</p>
+      <p class="hint">기록을 파일로 저장하거나, 저장해 둔 파일의 기록을 내 계정에 추가할 수 있어요.</p>
       <div class="row">
         <button id="export-btn" type="button">내보내기 (JSON)</button>
         <label class="file-btn">불러오기<input type="file" id="import-file" accept=".json" hidden></label>
       </div>
     </section>
   </main>
+  </div>
 
+  <script src="vendor/supabase.js"></script>
+  <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

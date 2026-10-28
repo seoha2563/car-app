@@ -1,31 +1,95 @@
 // =====================================================
 // 내 차 관리 앱
-// 구조: ① 데이터 저장/불러오기 → ② 계산 → ③ 화면 그리기 → ④ 이벤트 연결
+// 구조: ① 데이터(서버 저장) → ② 계산 → ③ 화면 그리기 → ④ 이벤트 연결
+// 데이터는 Supabase(서버 데이터베이스)에 저장되고, 로그인한 사용자 본인 것만 보입니다.
 // =====================================================
 
+const $ = sel => document.querySelector(sel);
+
 // ---------- ① 데이터 ----------
-// 앱의 모든 데이터는 이 state 객체 하나에 들어 있어요.
-const STORAGE_KEY = "car-app-data";
+const { SUPABASE_URL, SUPABASE_ANON_KEY } = window.APP_CONFIG;
+const configured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+const db = configured ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-let state = load();
+// 화면에 쓰는 데이터는 이 state 하나에 모아둬요. 서버에서 받아온 사본입니다.
+let state = { car: { name: "", plate: "" }, fuel: [], service: [] };
+let user = null; // 로그인한 사용자 (없으면 null)
 
-function load() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (saved) return saved;
-  } catch (e) { /* 저장된 데이터가 깨졌다면 새로 시작 */ }
-  return { car: { name: "", plate: "" }, fuel: [], service: [] };
+const TABLE = { fuel: "fuel_logs", service: "service_logs" };
+
+// DB 열 이름(next_km)  <->  화면에서 쓰는 이름(nextKm) 변환
+const fromDb = {
+  fuel: r => ({ id: r.id, date: r.date, odo: r.odo, liters: Number(r.liters), cost: r.cost }),
+  service: r => ({
+    id: r.id, type: r.type, date: r.date, odo: r.odo, cost: r.cost,
+    nextKm: r.next_km, nextDate: r.next_date, memo: r.memo,
+  }),
+};
+const toDb = {
+  fuel: r => ({ date: r.date, odo: r.odo, liters: r.liters, cost: r.cost }),
+  service: r => ({
+    type: r.type, date: r.date, odo: r.odo, cost: r.cost,
+    next_km: r.nextKm ?? null, next_date: r.nextDate || null, memo: r.memo || "",
+  }),
+};
+
+// 서버 요청 결과에 에러가 있으면 예외로 바꿔주는 도우미
+async function run(request) {
+  const { data, error } = await request;
+  if (error) throw error;
+  return data;
 }
 
-function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  render(); // 데이터가 바뀔 때마다 화면을 다시 그립니다
+// 서버에서 내 데이터를 전부 받아와 state에 넣기
+async function loadAll() {
+  const [car, fuel, service] = await Promise.all([
+    run(db.from("cars").select("name, plate").maybeSingle()),
+    run(db.from("fuel_logs").select("*")),
+    run(db.from("service_logs").select("*")),
+  ]);
+  state = {
+    car: car || { name: "", plate: "" },
+    fuel: fuel.map(fromDb.fuel),
+    service: service.map(fromDb.service),
+  };
+}
+
+// 쓰기 작업은 "서버에 반영 → 다시 받아오기 → 화면 갱신" 순서로 통일했어요.
+// (조금 느릴 수 있지만 화면과 서버가 항상 같아서 실수할 일이 적어요)
+async function mutate(action) {
+  try {
+    await action();
+    await loadAll();
+    render();
+  } catch (err) {
+    alert("저장하지 못했어요: " + (err.message || err));
+  }
+}
+
+const addRecord = (kind, rec) => mutate(() => run(db.from(TABLE[kind]).insert(toDb[kind](rec))));
+const removeRecord = (kind, id) => mutate(() => run(db.from(TABLE[kind]).delete().eq("id", id)));
+const saveCar = car => mutate(() => run(db.from("cars").upsert({ user_id: user.id, ...car })));
+
+// 여러 기록을 한꺼번에 추가 (백업 불러오기, 기존 기록 옮기기에서 사용)
+function addAll(data) {
+  return mutate(async () => {
+    if (data.car && (data.car.name || data.car.plate)) {
+      await run(db.from("cars").upsert({ user_id: user.id, name: data.car.name || "", plate: data.car.plate || "" }));
+    }
+    if (data.fuel.length) await run(db.from("fuel_logs").insert(data.fuel.map(toDb.fuel)));
+    if (data.service.length) await run(db.from("service_logs").insert(data.service.map(toDb.service)));
+  });
 }
 
 // ---------- ② 계산 ----------
 const won = n => Math.round(n).toLocaleString("ko-KR") + "원";
 const km = n => Number(n).toLocaleString("ko-KR") + " km";
-const today = () => new Date().toISOString().slice(0, 10);
+
+// 오늘 날짜(YYYY-MM-DD). 한국 시간 기준으로 계산해요.
+const today = () => {
+  const d = new Date();
+  return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+};
 
 // 사용자가 입력한 글자가 HTML로 해석되지 않도록 바꿔주는 함수 (보안상 중요!)
 function esc(text) {
@@ -78,8 +142,6 @@ function serviceStatus(s) {
 }
 
 // ---------- ③ 화면 그리기 ----------
-const $ = sel => document.querySelector(sel);
-
 function render() {
   // 헤더
   const { name, plate } = state.car;
@@ -92,6 +154,8 @@ function render() {
   // 폼에 저장된 차 정보 채우기
   $("#car-form").elements.name.value = name;
   $("#car-form").elements.plate.value = plate;
+  $("#account-email").textContent = user ? `로그인: ${user.email}` : "";
+  $("#migrate-box").hidden = !localData();
 }
 
 function renderSummary() {
@@ -170,18 +234,18 @@ function formData(form) {
   for (const key of ["odo", "liters", "cost", "nextKm"]) {
     if (key in data) data[key] = data[key] === "" ? null : Number(data[key]);
   }
-  return { id: Date.now(), ...data };
+  return data;
 }
 
-function setupForm(selector, listName) {
+function setupForm(selector, kind) {
   const form = $(selector);
   form.date.value = today(); // 날짜 기본값: 오늘
-  form.addEventListener("submit", e => {
+  form.addEventListener("submit", async e => {
     e.preventDefault(); // 페이지 새로고침 막기
-    state[listName].push(formData(form));
+    const rec = formData(form);
     form.reset();
     form.date.value = today();
-    save();
+    await addRecord(kind, rec);
   });
 }
 setupForm("#fuel-form", "fuel");
@@ -191,17 +255,14 @@ setupForm("#service-form", "service");
 $("#car-form").addEventListener("submit", e => {
   e.preventDefault();
   const f = e.target.elements;
-  state.car = { name: f.name.value.trim(), plate: f.plate.value.trim() };
-  save();
+  saveCar({ name: f.name.value.trim(), plate: f.plate.value.trim() });
 });
 
 // 삭제 버튼 (목록 전체에 이벤트를 하나만 달아서 처리)
 document.addEventListener("click", e => {
   const btn = e.target.closest(".del");
   if (!btn || !confirm("이 기록을 삭제할까요?")) return;
-  const { kind, id } = btn.dataset;
-  state[kind] = state[kind].filter(r => String(r.id) !== id);
-  save();
+  removeRecord(btn.dataset.kind, Number(btn.dataset.id));
 });
 
 // 백업: 내보내기
@@ -214,23 +275,97 @@ $("#export-btn").addEventListener("click", () => {
   URL.revokeObjectURL(a.href);
 });
 
-// 백업: 불러오기
+// 백업: 불러오기 (현재 계정에 "추가"합니다. 기존 기록을 지우지 않아요)
 $("#import-file").addEventListener("change", async e => {
   const file = e.target.files[0];
   if (!file) return;
   try {
     const data = JSON.parse(await file.text());
     if (!data.car || !Array.isArray(data.fuel) || !Array.isArray(data.service)) throw new Error();
-    if (!confirm("현재 데이터를 백업 파일로 덮어쓸까요?")) return;
-    state = data;
-    save();
+    if (confirm(`주유 ${data.fuel.length}건, 정비 ${data.service.length}건을 내 계정에 추가할까요?`)) await addAll(data);
   } catch {
     alert("올바른 백업 파일이 아니에요.");
   }
   e.target.value = "";
 });
 
-render(); // 첫 화면 그리기
+// ---------- 기존(서버 도입 전) 브라우저 저장 기록 옮기기 ----------
+const LOCAL_KEY = "car-app-data";
+
+function localData() {
+  try {
+    const d = JSON.parse(localStorage.getItem(LOCAL_KEY));
+    return d && (d.fuel?.length || d.service?.length) ? d : null;
+  } catch { return null; }
+}
+
+$("#migrate-btn").addEventListener("click", async () => {
+  const data = localData();
+  if (!data || !confirm(`주유 ${data.fuel.length}건, 정비 ${data.service.length}건을 내 계정으로 옮길까요?`)) return;
+  await addAll(data);
+  localStorage.removeItem(LOCAL_KEY); // 중복으로 또 옮기지 않도록 정리
+  render();
+});
+
+// ---------- 로그인 ----------
+const authMsg = text => { $("#auth-msg").textContent = text; };
+
+async function authenticate(action) {
+  const f = $("#auth-form");
+  if (!f.reportValidity()) return; // 이메일 형식, 비밀번호 길이 검사
+  authMsg("잠시만요…");
+  const { data, error } = await action({ email: f.email.value.trim(), password: f.password.value });
+  if (error) return authMsg(error.message);
+  // 회원가입 직후 세션이 없다면 이메일 인증이 켜져 있다는 뜻
+  if (data && !data.session) authMsg("확인 메일을 보냈어요. 메일의 링크를 누른 뒤 로그인해주세요.");
+}
+
+$("#auth-form").addEventListener("submit", e => {
+  e.preventDefault();
+  authenticate(c => db.auth.signInWithPassword(c));
+});
+$("#signup-btn").addEventListener("click", () => authenticate(c => db.auth.signUp(c)));
+$("#logout-btn").addEventListener("click", () => db.auth.signOut());
+
+// 로그인 상태가 바뀔 때 화면 전환
+async function setUser(u) {
+  user = u;
+  $("#auth").hidden = Boolean(u);
+  $("#app").hidden = !u;
+  if (!u) {
+    state = { car: { name: "", plate: "" }, fuel: [], service: [] };
+    $("#auth-form").reset();
+    authMsg("");
+    $("#car-title").textContent = "로그인이 필요해요";
+    return;
+  }
+  $("#car-title").textContent = "불러오는 중…";
+  try {
+    await loadAll();
+  } catch (err) {
+    $("#car-title").textContent = "";
+    alert("데이터를 불러오지 못했어요: " + (err.message || err));
+  }
+  render();
+}
+
+async function start() {
+  if (!configured) {
+    $("#auth").hidden = false;
+    $("#auth-form").hidden = true;
+    $("#car-title").textContent = "config.js에 Supabase 주소와 키를 먼저 입력해주세요";
+    return;
+  }
+  const { data } = await db.auth.getSession();
+  await setUser(data.session?.user ?? null);
+  // 로그인/로그아웃 때만 반응 (토큰 자동 갱신처럼 사용자가 같은 경우는 무시)
+  // 콜백 안에서 바로 서버 요청을 하면 멈출 수 있어서 setTimeout으로 한 박자 늦춰요.
+  db.auth.onAuthStateChange((_event, session) => {
+    const next = session?.user ?? null;
+    if (next?.id !== user?.id) setTimeout(() => setUser(next), 0);
+  });
+}
+start();
 
 // 서비스 워커 등록 (https 주소나 localhost에서만 동작, 더블클릭으로 연 file:// 에서는 건너뜀)
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {

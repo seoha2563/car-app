@@ -60,6 +60,12 @@ button[type="submit"], #export-btn, .file-btn {
   padding: 10px 14px; border: 0; border-radius: 8px; background: var(--primary);
   color: #fff; font-size: 1rem; cursor: pointer; text-align: center;
 }
+[hidden] { display: none !important; }
+button.secondary, #migrate-btn {
+  padding: 10px 14px; border-radius: 8px; font-size: 1rem; cursor: pointer;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text);
+}
+#migrate-btn { background: var(--primary); color: #fff; border: 0; }
 .row { display: flex; gap: 8px; }
 .hint { color: var(--muted); font-size: 0.85rem; }
 

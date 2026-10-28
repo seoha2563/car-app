@@ -1,7 +1,7 @@
 // 서비스 워커: 한 번 접속하면 파일을 기기에 저장해서, 인터넷이 없어도 앱이 열리게 해줍니다.
-const CACHE = "car-app-v1";
+const CACHE = "car-app-v2";
 const FILES = [
-  "./", "index.html", "style.css", "app.js",
+  "./", "index.html", "style.css", "app.js", "config.js", "vendor/supabase.js",
   "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png",
 ];
 
