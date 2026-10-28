@@ -1,0 +1,82 @@
+/* 색상은 :root 변수로 모아두면 나중에 테마 바꾸기가 쉬워요 */
+:root {
+  --bg: #f4f6f9;
+  --panel: #ffffff;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --primary: #2563eb;
+  --danger: #dc2626;
+  --warn: #d97706;
+  --border: #e5e7eb;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, "Malgun Gothic", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+header, nav, main { max-width: 720px; margin: 0 auto; padding: 0 16px; }
+header { padding-top: 20px; }
+header h1 { margin: 0; font-size: 1.5rem; }
+#car-title { margin: 4px 0 12px; color: var(--muted); }
+
+nav { display: flex; gap: 6px; margin-bottom: 12px; }
+nav button {
+  flex: 1; padding: 10px; border: 1px solid var(--border);
+  background: var(--panel); border-radius: 8px; cursor: pointer; font-size: 1rem;
+}
+nav button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+main { padding-bottom: 40px; }
+.tab { display: none; }
+.tab.active { display: block; }
+
+h2 { font-size: 1.1rem; margin: 24px 0 8px; }
+
+/* 요약 카드 */
+.cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 6px;
+}
+.card span { color: var(--muted); font-size: 0.85rem; }
+.card strong { font-size: 1.3rem; }
+
+/* 폼 */
+form {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px; display: grid; gap: 10px;
+}
+label { display: grid; gap: 4px; font-size: 0.85rem; color: var(--muted); }
+input, select {
+  padding: 9px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 1rem; color: var(--text); background: #fff;
+}
+button[type="submit"], #export-btn, .file-btn {
+  padding: 10px 14px; border: 0; border-radius: 8px; background: var(--primary);
+  color: #fff; font-size: 1rem; cursor: pointer; text-align: center;
+}
+.row { display: flex; gap: 8px; }
+.hint { color: var(--muted); font-size: 0.85rem; }
+
+/* 기록 목록 */
+.list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 8px; }
+.list li {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+}
+.list .main { font-weight: 600; }
+.list .sub { color: var(--muted); font-size: 0.85rem; margin-top: 2px; }
+.list .del {
+  border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 1.1rem;
+}
+.list .del:hover { color: var(--danger); }
+.list li.overdue { border-color: var(--danger); }
+.list li.soon { border-color: var(--warn); }
+.badge-overdue { color: var(--danger); font-weight: 600; }
+.badge-soon { color: var(--warn); font-weight: 600; }
+.empty { color: var(--muted); justify-content: center; }

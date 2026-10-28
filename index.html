@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>내 차 관리</title>
+  <meta name="theme-color" content="#2563eb">
+  <meta name="description" content="주유·정비 기록과 연비, 교체 시기를 관리하는 앱">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="내 차">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>🚗 내 차 관리</h1>
+    <p id="car-title"></p>
+  </header>
+
+  <!-- 탭 메뉴: data-tab 값이 아래 section의 id와 연결됩니다 -->
+  <nav id="tabs">
+    <button data-tab="summary" class="active">요약</button>
+    <button data-tab="fuel">주유</button>
+    <button data-tab="service">정비</button>
+    <button data-tab="car">내 차</button>
+  </nav>
+
+  <main>
+    <!-- ===== 요약 ===== -->
+    <section id="summary" class="tab active">
+      <div class="cards">
+        <div class="card"><span>현재 주행거리</span><strong id="s-odo">-</strong></div>
+        <div class="card"><span>평균 연비</span><strong id="s-eff">-</strong></div>
+        <div class="card"><span>이번 달 지출</span><strong id="s-month">-</strong></div>
+        <div class="card"><span>누적 지출</span><strong id="s-total">-</strong></div>
+      </div>
+      <h2>정비 알림</h2>
+      <ul id="alerts" class="list"></ul>
+    </section>
+
+    <!-- ===== 주유 ===== -->
+    <section id="fuel" class="tab">
+      <form id="fuel-form">
+        <label>날짜 <input type="date" name="date" required></label>
+        <label>주행거리(km) <input type="number" name="odo" min="0" required></label>
+        <label>주유량(L) <input type="number" name="liters" step="0.01" min="0" required></label>
+        <label>총 금액(원) <input type="number" name="cost" min="0" required></label>
+        <button type="submit">주유 기록 추가</button>
+      </form>
+      <p class="hint">매번 가득 주유한다고 가정하고 연비를 계산해요.</p>
+      <ul id="fuel-list" class="list"></ul>
+    </section>
+
+    <!-- ===== 정비 ===== -->
+    <section id="service" class="tab">
+      <form id="service-form">
+        <label>항목
+          <select name="type">
+            <option>엔진오일</option>
+            <option>타이어</option>
+            <option>브레이크패드</option>
+            <option>에어컨필터</option>
+            <option>배터리</option>
+            <option>자동차검사</option>
+            <option>기타</option>
+          </select>
+        </label>
+        <label>날짜 <input type="date" name="date" required></label>
+        <label>주행거리(km) <input type="number" name="odo" min="0" required></label>
+        <label>비용(원) <input type="number" name="cost" min="0" required></label>
+        <label>다음 교체 주행거리(km, 선택) <input type="number" name="nextKm" min="0"></label>
+        <label>다음 교체 날짜(선택) <input type="date" name="nextDate"></label>
+        <label>메모 <input type="text" name="memo"></label>
+        <button type="submit">정비 기록 추가</button>
+      </form>
+      <ul id="service-list" class="list"></ul>
+    </section>
+
+    <!-- ===== 내 차 ===== -->
+    <section id="car" class="tab">
+      <form id="car-form">
+        <label>차 이름 <input type="text" name="name" placeholder="예: 아반떼 CN7"></label>
+        <label>번호판 <input type="text" name="plate" placeholder="예: 12가 3456"></label>
+        <button type="submit">저장</button>
+      </form>
+
+      <h2>백업</h2>
+      <p class="hint">브라우저 데이터를 지우면 기록도 사라져요. 가끔 내보내기로 백업하세요.</p>
+      <div class="row">
+        <button id="export-btn" type="button">내보내기 (JSON)</button>
+        <label class="file-btn">불러오기<input type="file" id="import-file" accept=".json" hidden></label>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
